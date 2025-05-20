@@ -5,3 +5,6 @@ Test projects to learn Rust
 - Log activites. If no suspicious activity, delete footage.
 - Use LED blinking in a secure, random-generated pattern. If the pattern is not correct, then the visual feedback is tampered.
 - LED blinker can be from the Pi5 or the keyboard CapsLock light.
+
+# Dependencies
+- OpenCV

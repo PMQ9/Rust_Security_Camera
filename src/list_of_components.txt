@@ -1,0 +1,6 @@
+##### Capture #####
+Capture footage from webcam. Set the initial background as a reference.
+If there is a difference of x pixels between the current frame and the reference frame, an event is logged.
+Capture LED blinking pattern to be evaluated.
+
+##### Logging #####

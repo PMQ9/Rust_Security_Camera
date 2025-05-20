@@ -1,0 +1,9 @@
+// .toml files allows hot-tuning parameters.
+// for development, security parameters can be placed here
+// for deployment, security parameters MUST not be change on-the-fly
+
+// Security pattern parameters
+length = 10
+min_digit = 0
+max_digit = 9
+repeat_allowed = true
