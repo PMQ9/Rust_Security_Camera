@@ -3,15 +3,17 @@ name = "Rust_Security_Camera"
 version = "0.1.0"
 edition = "2024"
 
+[package.metadata.vcpkg]
+git = "https://github.com/microsoft/vcpkg"
+rev = "2024.10.22"
+
+[package.metadata.vcpkg.dependencies]
+opencv4 = ["ffmpeg", "nonfree"]
+
 [dependencies]
-opencv = "0.86.0"
-# opencv = { version = "0.86.0", features = ["buildtime-bindgen", "opencv-4"] }
+opencv = { version = "0.95.1", default-features = false, features = ["highgui", "videoio"] }
 rand = "0.8"
 serde = { version = "1.0", features = ["derive"] }
 toml = "0.8"
 chrono = "0.4"
 anyhow = "1.0"
-
-[build-dependencies]
-opencv = "0.86.0"
-# opencv = { version = "0.86.0", features = ["buildtime-bindgen"] }

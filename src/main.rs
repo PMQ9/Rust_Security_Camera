@@ -1,22 +1,16 @@
-mod controller;
-mod tuning;
-
 use anyhow::Result;
-use controller::camera::capture::MotionDetector;
-
 use opencv::{
     core::{self, Mat},
     highgui,
     prelude::*,
     videoio::{self, VideoCapture},
-    Result,
 };
 
 fn main() -> Result<()> {
     // Initialize the webcam capture (index 0 for default camera)
     let mut cap = VideoCapture::new(0, videoio::CAP_ANY)?;
     if !cap.is_opened()? {
-        return Err(opencv::Error::new(core::StsError, "Failed to open webcam"));
+        return Err(anyhow::anyhow!("Failed to open webcam"));
     }
 
     let window_name = "Webcam Display";

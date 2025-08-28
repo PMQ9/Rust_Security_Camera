@@ -7,17 +7,23 @@ Test projects to learn Rust
 - LED blinker can be from the Pi5 or the keyboard CapsLock light.
 
 # Requirements
-1. Install Rust
-2. Install OpenCV: The Rust `opencv` crate requires the OpenCV library to be installed
-    - Use version 4.9.0
-    - Add OpenCV binaries to system's PATH environment variable
-    - Set environment variables: `OPENCV_DIR` to `C:\opencv\build` and `PKG_CONFIG_PATH` to `C:\opencv\build\x64\vc16\lib`, might assist with crate compilation.
-3. Install LLVM `https://releases.llvm.org/download.html`
-    - Use version 15.0.7 `LLVM-15.0.7-win64.exe`.
-    - Add LLVM binaries `C:\Program Files\LLVM\bin` to system's PATH environment variable. 
-    - Set environment variables: `LIBCLANG_PATH` to `C:\Program Files\LLVM\bin`.
-4. Set temporary variables:
-    - `set VCPKG_ROOT=C:\vcpkg`
-    - `set OPENCV_DIR=C:\vcpkg\installed\x64-windows`
+1. Microsoft C++ Build Tools
+2. Cmake
+3. Rust
+4. OpenCV: The Rust `opencv` crate requires the OpenCV library to be installed
+    - Use version 4.10.0
+5. Install LLVM `https://releases.llvm.org/download.html`
+    - Use version 19.1.3
+6. If you are using Windows, add the following Environment Variables:
+    - `OPENCV_LINK_LIBS` = `"opencv_core4,opencv_highgui4,opencv_imgproc4,opencv_videoio4"`
+    - `OPENCV_LINK_PATHS` = `"C:\...\vcpkg\installed\x64-windows\lib"`
+    - `OPENCV_INCLUDE_PATHS` = `"C:\...\vcpkg\installed\x64-windows\include\opencv4"`
+    - `OPENCV_VERSION` = `"4.11.0"`
+    - `OPENCV_DISABLE_PROBES` = `"cmake,vcpkg_cmake,vcpkg,pkg_config"`
+    - `OPENCV_PACKAGE_NAME` = `"opencv4"`
+    - `OPENCV_VCPKG_NAME` = `"opencv4"`
+    - `VCPKG_ROOT` = `"C:\...\vcpkg"`
+    - `VCPKGRS_DYNAMIC` = `"1"`
+    - `CMAKE_PREFIX_PATH` = `"C:\...\vcpkg\installed\x64-windows"`
 
 
