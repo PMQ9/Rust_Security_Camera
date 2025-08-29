@@ -7,8 +7,8 @@ use opencv::{
 };
 
 fn main() -> Result<()> {
-    // Initialize the webcam capture (index 0 for default camera)
-    let mut cap = VideoCapture::new(0, videoio::CAP_ANY)?;
+    // Initialize the webcam capture (index 0 for default webcam, index 1 for external camera)
+    let mut cap = VideoCapture::new(1, videoio::CAP_ANY)?;
     if !cap.is_opened()? {
         return Err(anyhow::anyhow!("Failed to open webcam"));
     }
