@@ -11,7 +11,7 @@ rev = "2024.10.22"
 opencv4 = ["ffmpeg", "nonfree"]
 
 [dependencies]
-opencv = { version = "0.95.1", default-features = false, features = ["highgui", "videoio"] }
+opencv = { version = "0.95.1", default-features = false, features = ["highgui", "videoio", "imgproc"] }
 rand = "0.8"
 serde = { version = "1.0", features = ["derive"] }
 toml = "0.8"
