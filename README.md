@@ -26,4 +26,10 @@ Test projects to learn Rust
     - `VCPKGRS_DYNAMIC` = `"1"`
     - `CMAKE_PREFIX_PATH` = `"C:\...\vcpkg\installed\x64-windows"`
 
+# Instruction
+
+1. Start Security Pattern on Raspberry Pi4
+    - `cd src/controller/led`
+    - `rustc led_controller.rs`
+    - `sudo ./led_controller`
 
