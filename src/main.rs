@@ -13,11 +13,13 @@ const LED1_PATTERN: [u8; 4] = [0, 0, 1, 0]; // ACT LED pattern
 const LED2_PATTERN: [u8; 4] = [0, 1, 1, 0]; // PWR LED pattern
 const PATTERN_LENGTH: usize = 4;
 const SAMPLE_INTERVAL: Duration = Duration::from_millis(1000); // 1-second sampling to match LED timing
-const BRIGHTNESS_THRESHOLD: f64 = 100.0; // Threshold to determine if LED is on (adjust as needed)
+const BRIGHTNESS_THRESHOLD_LED1: f64 = 77.0; // Threshold to determine if LED is on (adjust as needed)
+const BRIGHTNESS_THRESHOLD_LED2: f64 = 76.0; // Threshold to determine if LED is on (adjust as needed)
+
 
 fn main() -> Result<()> {
     // Initialize the webcam capture (index 0 for default webcam)
-    let mut cap = VideoCapture::new(0, videoio::CAP_ANY)?;
+    let mut cap = VideoCapture::new(1, videoio::CAP_ANY)?;
     if !cap.is_opened()? {
         return Err(anyhow::anyhow!("Failed to open webcam"));
     }
@@ -63,8 +65,22 @@ fn main() -> Result<()> {
             let led2_brightness = core::mean(&led2_region, &Mat::default())?.0[0];
 
             // Determine LED states based on brightness threshold
-            let led1_state = if led1_brightness > BRIGHTNESS_THRESHOLD { 1 } else { 0 };
-            let led2_state = if led2_brightness > BRIGHTNESS_THRESHOLD { 1 } else { 0 };
+            let led1_state = if led1_brightness > BRIGHTNESS_THRESHOLD_LED1 { 1 } else { 0 };
+            let led2_state = if led2_brightness > BRIGHTNESS_THRESHOLD_LED2 { 1 } else { 0 };
+
+            // Print brightness and state for each LED
+            println!(
+                "LED1 (ROI1): Brightness = {:.2}, State = {} ({})",
+                led1_brightness,
+                led1_state,
+                if led1_state == 1 { "ON" } else { "OFF" }
+            );
+            println!(
+                "LED2 (ROI2): Brightness = {:.2}, State = {} ({})",
+                led2_brightness,
+                led2_state,
+                if led2_state == 1 { "ON" } else { "OFF" }
+            );
 
             // Store states
             led1_states.push(led1_state);
