@@ -32,4 +32,18 @@ Test projects to learn Rust
     - `cd src/controller/led`
     - `rustc led_controller.rs`
     - `sudo ./led_controller`
+2. Compile Rust_Security_Camera
+    - `cargo clean`
+    - `cargo build`
+    - Might need to run this script to add some missing libraries: `.\utils\copy_dll_files_from_vcpkg_to_target.bat`
+3. Wait for the program to self calibrate, please ensure consistent lighting for the best result
+
+# Demo
+
+https://github.com/user-attachments/assets/1a495fa7-ec8a-432a-807a-399714ec5916
+
+Raw: https://github.com/PMQ9/Rust_Security_Camera/blob/main/doc/2025-08-29%2020-05-12.mp4
+
+
+
 
