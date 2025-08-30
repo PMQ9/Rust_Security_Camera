@@ -16,7 +16,7 @@ const SAMPLE_INTERVAL: Duration = Duration::from_millis(1000); // 1-second sampl
 const CALIBRATION_SAMPLES: usize = 10; // Number of samples for calibration
 const MIN_BRIGHTNESS_DIFF: f64 = 2.0; // Minimum difference between max and min brightness
 
-fn calibrate_thresholds(cap: &mut VideoCapture, roi1: Rect, roi2: Rect) -> Result<(f64, f64)> {
+fn calibrate_thresholds(cap: &mut VideoCapture, roi1: Rect, roi2: Rect, window_name: &str) -> Result<(f64, f64)> {
     let mut led1_brightnesses = Vec::with_capacity(CALIBRATION_SAMPLES);
     let mut led2_brightnesses = Vec::with_capacity(CALIBRATION_SAMPLES);
 
@@ -49,6 +49,48 @@ fn calibrate_thresholds(cap: &mut VideoCapture, roi1: Rect, roi2: Rect) -> Resul
                 led1_brightness,
                 led2_brightness
             );
+
+            // Draw ROI1 rectangle (red, thickness 2) for LED1
+            imgproc::rectangle(
+                &mut frame,
+                roi1,
+                Scalar::new(0.0, 0.0, 255.0, 0.0), // Red color in BGR
+                2,
+                imgproc::LINE_8,
+                0,
+            )?;
+
+            // Draw ROI2 rectangle (blue, thickness 2) for LED2
+            imgproc::rectangle(
+                &mut frame,
+                roi2,
+                Scalar::new(255.0, 0.0, 0.0, 0.0), // Blue color in BGR
+                2,
+                imgproc::LINE_8,
+                0,
+            )?;
+
+            // Display calibration status
+            let text = format!("Calibration in progress: Sample {}/{}", i + 1, CALIBRATION_SAMPLES);
+            imgproc::put_text(
+                &mut frame,
+                &text,
+                Point::new(10, 30), // Position near top-left
+                imgproc::FONT_HERSHEY_SIMPLEX,
+                0.7, // Font scale
+                Scalar::new(0.0, 255.0, 0.0, 0.0), // Green text
+                2,
+                imgproc::LINE_8,
+                false,
+            )?;
+
+            // Display the frame
+            highgui::imshow(window_name, &frame)?;
+
+            // Check for 'Esc' key to exit calibration
+            if highgui::wait_key(1)? == 27 {
+                return Err(anyhow::anyhow!("Calibration interrupted by user (Esc key)"));
+            }
 
             std::thread::sleep(SAMPLE_INTERVAL);
         }
@@ -109,17 +151,22 @@ fn main() -> Result<()> {
     let height = frame.rows();
 
     // Define the main ROI (top-right corner, 10% of frame size)
-    let rect_width = (width as f32 * 0.1) as i32; // 10% of frame width
-    let rect_height = (height as f32 * 0.1) as i32; // 10% of frame height
-    let top_left_x = width - rect_width - 10; // 10-pixel margin from right
-    let top_left_y = 10; // 10-pixel margin from top
+    let rect_width = (width as f32 * 0.1) as f32; // 10% of frame width
+    let rect_height = (height as f32 * 0.1) as f32; // 10% of frame height
+    let top_left_x = width as f32 - rect_width - 10.0; // 10-pixel margin from right
+    let top_left_y = 10.0; // 10-pixel margin from top
 
     // Split the main ROI into two rectangles: ROI1 (left) for LED1, ROI2 (right) for LED2
-    let roi1 = Rect::new(top_left_x, top_left_y, rect_width / 2, rect_height); // Left half for LED1
-    let roi2 = Rect::new(top_left_x + rect_width / 2, top_left_y, rect_width / 2, rect_height); // Right half for LED2
+    let roi1 = Rect::new(top_left_x as i32, top_left_y as i32, (rect_width / 2.0) as i32, rect_height as i32); // Left half for LED1
+    let roi2 = Rect::new(
+        (top_left_x + rect_width / 2.0) as i32,
+        top_left_y as i32,
+        (rect_width / 2.0) as i32,
+        rect_height as i32,
+    ); // Right half for LED2
 
     // Perform calibration to determine thresholds
-    let (brightness_threshold_led1, brightness_threshold_led2) = calibrate_thresholds(&mut cap, roi1, roi2)?;
+    let (brightness_threshold_led1, brightness_threshold_led2) = calibrate_thresholds(&mut cap, roi1, roi2, window_name)?;
 
     // Buffers to store detected LED states
     let mut led1_states: Vec<u8> = Vec::with_capacity(PATTERN_LENGTH);
