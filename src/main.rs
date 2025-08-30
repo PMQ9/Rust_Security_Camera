@@ -15,6 +15,7 @@ const PATTERN_LENGTH: usize = 4;
 const SAMPLE_INTERVAL: Duration = Duration::from_millis(1000); // 1-second sampling to match LED timing
 const CALIBRATION_SAMPLES: usize = 10; // Number of samples for calibration
 const MIN_BRIGHTNESS_DIFF: f64 = 2.0; // Minimum difference between max and min brightness
+const VERIFICATION_HOLD_DURATION: Duration = Duration::from_millis(3500); // Hold verified status for 3 seconds
 
 fn calibrate_thresholds(cap: &mut VideoCapture, roi1: Rect, roi2: Rect, window_name: &str) -> Result<(f64, f64)> {
     let mut led1_brightnesses = Vec::with_capacity(CALIBRATION_SAMPLES);
@@ -172,6 +173,8 @@ fn main() -> Result<()> {
     let mut led1_states: Vec<u8> = Vec::with_capacity(PATTERN_LENGTH);
     let mut led2_states: Vec<u8> = Vec::with_capacity(PATTERN_LENGTH);
     let mut last_sample_time = Instant::now();
+    let mut is_verified = false;
+    let mut last_verified_time: Option<Instant> = None;
 
     loop {
         let mut frame = Mat::default();
@@ -221,16 +224,24 @@ fn main() -> Result<()> {
                 led2_states.remove(0);
             }
 
+            // Check if patterns match, but only update verification status if not in hold period
+            if last_verified_time.map_or(true, |t| t.elapsed() >= VERIFICATION_HOLD_DURATION) {
+                if led1_states.len() == PATTERN_LENGTH && led2_states.len() == PATTERN_LENGTH {
+                    is_verified = led1_states == LED1_PATTERN && led2_states == LED2_PATTERN;
+                    if is_verified {
+                        last_verified_time = Some(Instant::now());
+                    } else {
+                        last_verified_time = None;
+                    }
+                } else {
+                    is_verified = false;
+                    last_verified_time = None;
+                }
+            }
+
             // Reset sampling time
             last_sample_time = Instant::now();
         }
-
-        // Check if patterns match
-        let is_verified = if led1_states.len() == PATTERN_LENGTH && led2_states.len() == PATTERN_LENGTH {
-            led1_states == LED1_PATTERN && led2_states == LED2_PATTERN
-        } else {
-            false
-        };
 
         // Draw ROI1 rectangle (red, thickness 2) for LED1
         imgproc::rectangle(
