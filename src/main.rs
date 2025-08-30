@@ -42,21 +42,19 @@ fn main() -> Result<()> {
         let width = frame.cols();
         let height = frame.rows();
 
-        // Define the ROI (top-right corner, 10% of frame size)
+        // Define the main ROI (top-right corner, 10% of frame size)
         let rect_width = (width as f32 * 0.1) as i32; // 10% of frame width
         let rect_height = (height as f32 * 0.1) as i32; // 10% of frame height
         let top_left_x = width - rect_width - 10; // 10-pixel margin from right
         let top_left_y = 10; // 10-pixel margin from top
-        let rect = Rect::new(top_left_x, top_left_y, rect_width, rect_height);
 
-        // Extract ROI from the frame
-        let roi = Mat::roi(&frame, rect)?;
+        // Split the main ROI into two rectangles: ROI1 (left) for LED1, ROI2 (right) for LED2
+        let roi1 = Rect::new(top_left_x, top_left_y, rect_width / 2, rect_height); // Left half for LED1
+        let roi2 = Rect::new(top_left_x + rect_width / 2, top_left_y, rect_width / 2, rect_height); // Right half for LED2
 
-        // Split ROI into two regions for each LED (assuming LEDs are side by side)
-        let led1_roi = Rect::new(0, 0, rect_width / 2, rect_height);
-        let led2_roi = Rect::new(rect_width / 2, 0, rect_width / 2, rect_height);
-        let led1_region = Mat::roi(&roi, led1_roi)?;
-        let led2_region = Mat::roi(&roi, led2_roi)?;
+        // Extract ROI1 and ROI2 from the frame
+        let led1_region = Mat::roi(&frame, roi1)?;
+        let led2_region = Mat::roi(&frame, roi2)?;
 
         // Sample LED states at 1-second intervals
         if last_sample_time.elapsed() >= SAMPLE_INTERVAL {
@@ -91,11 +89,21 @@ fn main() -> Result<()> {
             false
         };
 
-        // Draw the ROI rectangle (red, thickness 2)
+        // Draw ROI1 rectangle (red, thickness 2) for LED1
         imgproc::rectangle(
             &mut frame,
-            rect,
+            roi1,
             Scalar::new(0.0, 0.0, 255.0, 0.0), // Red color in BGR
+            2,
+            imgproc::LINE_8,
+            0,
+        )?;
+
+        // Draw ROI2 rectangle (blue, thickness 2) for LED2
+        imgproc::rectangle(
+            &mut frame,
+            roi2,
+            Scalar::new(255.0, 0.0, 0.0, 0.0), // Blue color in BGR
             2,
             imgproc::LINE_8,
             0,
