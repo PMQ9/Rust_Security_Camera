@@ -1,6 +1,6 @@
 use anyhow::Result;
 use opencv::{
-    core::{self, Mat, Point, Rect, Scalar},
+    core::{self, AlgorithmHint, Mat, Point, Rect, Scalar},
     highgui,
     imgproc,
     prelude::*,
@@ -8,7 +8,6 @@ use opencv::{
 };
 use std::time::{Duration, Instant};
 
-// Expected LED patterns from led_controller.rs
 const LED1_PATTERN: [u8; 4] = [0, 0, 1, 0]; // ACT LED pattern
 const LED2_PATTERN: [u8; 4] = [0, 1, 1, 0]; // PWR LED pattern
 const PATTERN_LENGTH: usize = 4;
@@ -16,10 +15,13 @@ const SAMPLE_INTERVAL: Duration = Duration::from_millis(1000); // 1-second sampl
 const CALIBRATION_SAMPLES: usize = 10; // Number of samples for calibration
 const MIN_BRIGHTNESS_DIFF: f64 = 2.0; // Minimum difference between max and min brightness
 const VERIFICATION_HOLD_DURATION: Duration = Duration::from_millis(3500); // Hold verified status for 3 seconds
+const MOTION_PERCENTAGE_THRESHOLD: f64 = 5.0; // Percentage of changed pixels to trigger detection
+const DIFF_THRESHOLD: f64 = 30.0; // Pixel intensity difference threshold for change detection
 
-fn calibrate_thresholds(cap: &mut VideoCapture, roi1: Rect, roi2: Rect, window_name: &str) -> Result<(f64, f64)> {
+fn calibrate_thresholds(cap: &mut VideoCapture, roi1: Rect, roi2: Rect, window_name: &str) -> Result<(f64, f64, Mat)> {
     let mut led1_brightnesses = Vec::with_capacity(CALIBRATION_SAMPLES);
     let mut led2_brightnesses = Vec::with_capacity(CALIBRATION_SAMPLES);
+    let mut reference_frame: Option<Mat> = None;
 
     println!("Starting calibration phase...");
 
@@ -27,12 +29,18 @@ fn calibrate_thresholds(cap: &mut VideoCapture, roi1: Rect, roi2: Rect, window_n
         led1_brightnesses.clear();
         led2_brightnesses.clear();
 
-        // Collect 10 samples
         for i in 0..CALIBRATION_SAMPLES {
             let mut frame = Mat::default();
             cap.read(&mut frame)?;
             if frame.empty() {
                 return Err(anyhow::anyhow!("Failed to capture frame during calibration"));
+            }
+
+            // Store the first frame as the reference frame for motion detection
+            if i == 0 {
+                let mut gray = Mat::default();
+                imgproc::cvt_color(&frame, &mut gray, imgproc::COLOR_BGR2GRAY, 0, AlgorithmHint::ALGO_HINT_DEFAULT)?;
+                reference_frame = Some(gray);
             }
 
             let led1_region = Mat::roi(&frame, roi1)?;
@@ -71,7 +79,6 @@ fn calibrate_thresholds(cap: &mut VideoCapture, roi1: Rect, roi2: Rect, window_n
                 0,
             )?;
 
-            // Display calibration status
             let text = format!("Calibration in progress: Sample {}/{}", i + 1, CALIBRATION_SAMPLES);
             imgproc::put_text(
                 &mut frame,
@@ -85,10 +92,8 @@ fn calibrate_thresholds(cap: &mut VideoCapture, roi1: Rect, roi2: Rect, window_n
                 false,
             )?;
 
-            // Display the frame
             highgui::imshow(window_name, &frame)?;
 
-            // Check for 'Esc' key to exit calibration
             if highgui::wait_key(1)? == 27 {
                 return Err(anyhow::anyhow!("Calibration interrupted by user (Esc key)"));
             }
@@ -96,7 +101,6 @@ fn calibrate_thresholds(cap: &mut VideoCapture, roi1: Rect, roi2: Rect, window_n
             std::thread::sleep(SAMPLE_INTERVAL);
         }
 
-        // Calculate max, min, and threshold for each LED
         let led1_max = led1_brightnesses.iter().fold(f64::MIN, |a, &b| a.max(b));
         let led1_min = led1_brightnesses.iter().fold(f64::MAX, |a, &b| a.min(b));
         let led2_max = led2_brightnesses.iter().fold(f64::MIN, |a, &b| a.max(b));
@@ -114,7 +118,6 @@ fn calibrate_thresholds(cap: &mut VideoCapture, roi1: Rect, roi2: Rect, window_n
             led2_max, led2_min, led2_diff
         );
 
-        // Check if differences meet the minimum requirement
         if led1_diff >= MIN_BRIGHTNESS_DIFF && led2_diff >= MIN_BRIGHTNESS_DIFF {
             let led1_threshold = (led1_max + led1_min) / 2.0;
             let led2_threshold = (led2_max + led2_min) / 2.0;
@@ -122,7 +125,7 @@ fn calibrate_thresholds(cap: &mut VideoCapture, roi1: Rect, roi2: Rect, window_n
                 "Calibration successful: LED1 Threshold = {:.2}, LED2 Threshold = {:.2}",
                 led1_threshold, led2_threshold
             );
-            return Ok((led1_threshold, led2_threshold));
+            return Ok((led1_threshold, led2_threshold, reference_frame.unwrap()));
         } else {
             println!(
                 "Calibration failed: LED1 Diff = {:.2}, LED2 Diff = {:.2}. Retrying...",
@@ -133,7 +136,7 @@ fn calibrate_thresholds(cap: &mut VideoCapture, roi1: Rect, roi2: Rect, window_n
 }
 
 fn main() -> Result<()> {
-    // Initialize the webcam capture (index 1 as specified)
+    // 1 for external camera, 0 for webcam
     let mut cap = VideoCapture::new(1, videoio::CAP_ANY)?;
     if !cap.is_opened()? {
         return Err(anyhow::anyhow!("Failed to open webcam"));
@@ -166,8 +169,11 @@ fn main() -> Result<()> {
         rect_height as i32,
     ); // Right half for LED2
 
-    // Perform calibration to determine thresholds
-    let (brightness_threshold_led1, brightness_threshold_led2) = calibrate_thresholds(&mut cap, roi1, roi2, window_name)?;
+    // Combined LED ROI for motion exclusion
+    let led_roi = Rect::new(roi1.x, roi1.y, roi1.width + roi2.width, roi1.height);
+
+    // Perform calibration to determine thresholds and capture reference frame
+    let (brightness_threshold_led1, brightness_threshold_led2, reference_gray) = calibrate_thresholds(&mut cap, roi1, roi2, window_name)?;
 
     // Buffers to store detected LED states
     let mut led1_states: Vec<u8> = Vec::with_capacity(PATTERN_LENGTH);
@@ -183,6 +189,29 @@ fn main() -> Result<()> {
         if frame.empty() {
             break;
         }
+
+        // Convert to grayscale for motion detection
+        let mut gray = Mat::default();
+        imgproc::cvt_color(&frame, &mut gray, imgproc::COLOR_BGR2GRAY, 0, AlgorithmHint::ALGO_HINT_DEFAULT)?;
+
+        // Detect motion by comparing with reference frame
+        let motion_detected = {
+            let mut diff = Mat::default();
+            core::absdiff(&gray, &reference_gray, &mut diff)?;
+
+            // Exclude LED ROI by setting differences in that area to zero
+            let mut diff_roi = Mat::roi_mut(&mut diff, led_roi)?;
+            diff_roi.set_to(&Scalar::all(0.0), &core::no_array())?;
+
+            // Threshold the difference image
+            let mut thresh = Mat::default();
+            imgproc::threshold(&diff, &mut thresh, DIFF_THRESHOLD, 255.0, imgproc::THRESH_BINARY)?;
+
+            // Calculate percentage of changed pixels
+            let changed_pixels = core::count_non_zero(&thresh)? as f64;
+            let total_pixels = (frame.cols() * frame.rows() - led_roi.width * led_roi.height) as f64;
+            (changed_pixels / total_pixels * 100.0) > MOTION_PERCENTAGE_THRESHOLD
+        };
 
         // Extract ROI1 and ROI2 from the frame
         let led1_region = Mat::roi(&frame, roi1)?;
@@ -280,6 +309,21 @@ fn main() -> Result<()> {
             imgproc::LINE_8,
             false,
         )?;
+
+        // Display motion detection status if motion is detected
+        if motion_detected {
+            imgproc::put_text(
+                &mut frame,
+                "Motion detected",
+                Point::new(10, 60), // Position below verification status
+                imgproc::FONT_HERSHEY_SIMPLEX,
+                0.7, // Font scale
+                Scalar::new(0.0, 0.0, 255.0, 0.0), // Red text
+                2,
+                imgproc::LINE_8,
+                false,
+            )?;
+        }
 
         // Display the frame
         highgui::imshow(window_name, &frame)?;
