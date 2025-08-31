@@ -1,8 +1,7 @@
-// Output security patternuse std::fs::OpenOptions;
+use std::fs::OpenOptions;
 use std::io::{self, Write};
 use std::thread;
 use std::time::Duration;
-use std::fs::OpenOptions;
 
 fn main() -> io::Result<()> {
     let act_path = "/sys/class/leds/ACT/brightness";
@@ -20,6 +19,7 @@ fn main() -> io::Result<()> {
     }
 }
 
+// Writes a brightness value to the specified LED path.
 fn write_to_led(path: &str, value: u8) -> io::Result<()> {
     let mut file = OpenOptions::new()
         .write(true)
@@ -29,8 +29,7 @@ fn write_to_led(path: &str, value: u8) -> io::Result<()> {
     file.write_all(value.to_string().as_bytes())
         .expect("Failed to write to LED brightness file");
 
-    file.flush()
-        .expect("Failed to flush changes to LED brightness file");
+    file.flush().expect("Failed to flush changes to LED brightness file");
 
     Ok(())
 }
