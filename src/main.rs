@@ -1,6 +1,6 @@
 use anyhow::Result;
 use opencv::{
-    core::{self, Mat, Point, Rect, Scalar},
+    core::{self, AlgorithmHint, Mat, Point, Rect, Scalar},
     highgui,
     imgproc,
     prelude::*,
@@ -16,6 +16,10 @@ const SAMPLE_INTERVAL: Duration = Duration::from_millis(1000); // 1-second sampl
 const CALIBRATION_SAMPLES: usize = 10; // Number of samples for calibration
 const MIN_BRIGHTNESS_DIFF: f64 = 2.0; // Minimum difference between max and min brightness
 const VERIFICATION_HOLD_DURATION: Duration = Duration::from_millis(3500); // Hold verified status for 3 seconds
+
+// Motion detection constants (adjust as needed)
+const MOTION_PERCENTAGE_THRESHOLD: f64 = 5.0; // Percentage of changed pixels to trigger detection
+const DIFF_THRESHOLD: f64 = 30.0; // Pixel intensity difference threshold for change detection
 
 fn calibrate_thresholds(cap: &mut VideoCapture, roi1: Rect, roi2: Rect, window_name: &str) -> Result<(f64, f64)> {
     let mut led1_brightnesses = Vec::with_capacity(CALIBRATION_SAMPLES);
@@ -166,6 +170,9 @@ fn main() -> Result<()> {
         rect_height as i32,
     ); // Right half for LED2
 
+    // Combined LED ROI for motion exclusion
+    let led_roi = Rect::new(roi1.x, roi1.y, roi1.width + roi2.width, roi1.height);
+
     // Perform calibration to determine thresholds
     let (brightness_threshold_led1, brightness_threshold_led2) = calibrate_thresholds(&mut cap, roi1, roi2, window_name)?;
 
@@ -176,6 +183,9 @@ fn main() -> Result<()> {
     let mut is_verified = false;
     let mut last_verified_time: Option<Instant> = None;
 
+    // For motion detection
+    let mut previous_gray: Option<Mat> = None;
+
     loop {
         let mut frame = Mat::default();
         cap.read(&mut frame)?;
@@ -183,6 +193,34 @@ fn main() -> Result<()> {
         if frame.empty() {
             break;
         }
+
+        // Convert to grayscale for motion detection
+        let mut gray = Mat::default();
+        imgproc::cvt_color(&frame, &mut gray, imgproc::COLOR_BGR2GRAY, 0, AlgorithmHint::ALGO_HINT_DEFAULT)?;
+
+        // Detect motion if previous frame is available
+        let motion_detected = if let Some(ref prev_gray) = previous_gray {
+            let mut diff = Mat::default();
+            core::absdiff(&gray, prev_gray, &mut diff)?;
+
+            // Exclude LED ROI by setting differences in that area to zero
+            let mut diff_roi = Mat::roi_mut(&mut diff, led_roi)?;
+            diff_roi.set_to(&Scalar::all(0.0), &core::no_array())?;
+
+            // Threshold the difference image
+            let mut thresh = Mat::default();
+            imgproc::threshold(&diff, &mut thresh, DIFF_THRESHOLD, 255.0, imgproc::THRESH_BINARY)?;
+
+            // Calculate percentage of changed pixels
+            let changed_pixels = core::count_non_zero(&thresh)? as f64;
+            let total_pixels = (frame.cols() * frame.rows() - led_roi.width * led_roi.height) as f64;
+            (changed_pixels / total_pixels * 100.0) > MOTION_PERCENTAGE_THRESHOLD
+        } else {
+            false
+        };
+
+        // Update previous gray frame
+        previous_gray = Some(gray);
 
         // Extract ROI1 and ROI2 from the frame
         let led1_region = Mat::roi(&frame, roi1)?;
@@ -280,6 +318,21 @@ fn main() -> Result<()> {
             imgproc::LINE_8,
             false,
         )?;
+
+        // Display motion detection status if motion is detected
+        if motion_detected {
+            imgproc::put_text(
+                &mut frame,
+                "Motion detected",
+                Point::new(10, 60), // Position below verification status
+                imgproc::FONT_HERSHEY_SIMPLEX,
+                0.7, // Font scale
+                Scalar::new(0.0, 0.0, 255.0, 0.0), // Red text
+                2,
+                imgproc::LINE_8,
+                false,
+            )?;
+        }
 
         // Display the frame
         highgui::imshow(window_name, &frame)?;
