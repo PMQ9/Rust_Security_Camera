@@ -11,7 +11,7 @@ use std::time::{Duration, Instant};
 const LED1_PATTERN: [u8; 4] = [0, 0, 1, 0]; // ACT LED pattern
 const LED2_PATTERN: [u8; 4] = [0, 1, 1, 0]; // PWR LED pattern
 const PATTERN_LENGTH: usize = 4;
-const SAMPLE_INTERVAL: Duration = Duration::from_millis(1000); // 1-second sampling to match LED timing
+const SAMPLE_INTERVAL: Duration = Duration::from_millis(500); // 1-second sampling to match LED timing
 const CALIBRATION_SAMPLES: usize = 10; // Number of samples for calibration
 const MIN_BRIGHTNESS_DIFF: f64 = 2.0; // Minimum difference between max and min brightness
 const VERIFICATION_HOLD_DURATION: Duration = Duration::from_millis(3500); // Hold verified status for 3 seconds

@@ -14,7 +14,7 @@ fn main() -> io::Result<()> {
         for i in 0..led1_pattern.len() {
             write_to_led(act_path, led1_pattern[i])?;
             write_to_led(pwr_path, led2_pattern[i])?;
-            thread::sleep(Duration::from_secs(1));
+            thread::sleep(Duration::from_millis(500));
         }
     }
 }
