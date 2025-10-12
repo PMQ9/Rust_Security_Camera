@@ -10,7 +10,7 @@ Projects to learn Rust
 3. Rust
 4. OpenCV: The Rust `opencv` crate requires the OpenCV library to be installed
     - Use version 4.10.0
-5. Install LLVM `https://releases.llvm.org/download.html`
+5. Install LLVM [`https://releases.llvm.org/download.html`](https://github.com/llvm/llvm-project/releases)
     - Use version 19.1.3
 6. If you are using Windows, add the following Environment Variables:
     - `OPENCV_LINK_LIBS` = `"opencv_core4,opencv_highgui4,opencv_imgproc4,opencv_videoio4"`
