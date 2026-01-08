@@ -4,6 +4,12 @@ Projects to learn Rust
 - Computer vision to determines suspicious activities.
 - Use LED blinking in a secure, random-generated pattern. If the pattern is not correct, then the visual feedback is tampered.
 
+# Demo
+
+https://github.com/user-attachments/assets/1a495fa7-ec8a-432a-807a-399714ec5916
+
+Raw: https://github.com/PMQ9/Rust_Security_Camera/blob/main/doc/2025-08-29%2020-05-12.mp4
+
 # Requirements
 1. Microsoft C++ Build Tools
 2. Cmake
@@ -36,11 +42,6 @@ Projects to learn Rust
     - Might need to run this script to add some missing libraries: `.\utils\copy_dll_files_from_vcpkg_to_target.bat`
 3. Wait for the program to self calibrate, please ensure consistent lighting for the best result
 
-# Demo
-
-https://github.com/user-attachments/assets/1a495fa7-ec8a-432a-807a-399714ec5916
-
-Raw: https://github.com/PMQ9/Rust_Security_Camera/blob/main/doc/2025-08-29%2020-05-12.mp4
 
 
 
